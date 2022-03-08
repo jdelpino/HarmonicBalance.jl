@@ -136,7 +136,7 @@ end
 
 """Gives the relation between `var` and the underlying natural variable."""
 function _show_ansatz(var::HarmonicVariable)
-    terms = Dict("u" => "cos", "v" => "sin")
+    terms = Dict("u" => "cos", "v" => "sin", "Hopf" => "")
     indep_var = var.natural_variable.val.arguments
     indep_var = length(indep_var) == 1 ? string(indep_var[1]) : error("more than 1 independent variable")
     join([string(var_name(s)) * "*" * terms[var.types[i]] * "(" * string(var.ω) * indep_var * ")" for (i,s) in enumerate(var.symbols)], " + ")
