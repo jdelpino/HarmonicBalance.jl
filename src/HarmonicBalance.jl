@@ -44,6 +44,7 @@ module HarmonicBalance
     include("saving.jl")
     include("PlottingStatic.jl")
     include("PlottingInteractive.jl")
+    include("HysteresisSweep.jl")
 
     include("modules/HC_wrapper.jl")
     using .HC_wrapper
