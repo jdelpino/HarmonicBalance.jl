@@ -11,6 +11,7 @@ export _set_plotting_settings, _prepare_colorbar, _prettify_label
 function _set_plotting_settings()
     plt.style.use("default") #reset settings
     rcParams = PyPlot.PyDict(PyPlot.matplotlib."rcParams") 
+    rcParams["axes.prop_cycle"]   = plt.cycler("color", ["#4C72B0", "#C44E52", "#55A868", "#9467BD", "#E56E00", "#64B5CD", "#CCB974", "#E377C2", "#8C564B", "#7F7F7F"])
     rcParams["text.usetex"]       = true
     rcParams["font.family"]       = "sans-serif"
     rcParams["font.sans-serif"]   = ["Helvetica"]
@@ -523,11 +524,11 @@ function plot_2D_solutions(res::Result; ax=nothing, filename=nothing, z=nothing,
 end
 
 """Discrete colorbar preparation for phase diagram"""
-function _prepare_colorbar(f,ax,im,Nmax;Nmax_discrete=9)  #creates and inserts in a phase diagram figure f a discrete or continuous colorbar
+function _prepare_colorbar(f,ax,im,Nmax,location; Nmax_discrete=9)  #creates and inserts in a phase diagram figure f a discrete or continuous colorbar
     if Nmax <= Nmax_discrete
-        f.colorbar(im, ax=ax,ticks=collect(1:Nmax), boundaries=collect(1:Nmax+1).-0.5)
-    else
-        f.colorbar(im, ax=ax)
+        f.colorbar(im, ax=ax,ticks=collect(1:Nmax), boundaries=collect(1:Nmax+1).-0.5,location=location)
+    else #continuous colorbar if number of regions (phases) is large
+        f.colorbar(im, ax=ax,location=location)
     end
 end
 
@@ -574,7 +575,7 @@ function plot_2D_phase_diagram(res::Result; stable=false,observable="nsols",ax=n
     Nmax = maximum(obs_2D)
     im = ax.imshow(obs_2D[:,end:-1:1]', extent=extent, aspect="auto",vmin=minimum(obs_2D),vmax=Nmax)
     if isnothing(input_ax) 
-        _prepare_colorbar(f,ax,im,Nmax)
+        _prepare_colorbar(f,ax,im,Nmax,"right")
     end
 
     px,py =string.([x,y])#swept parameter strings

@@ -201,7 +201,10 @@ function plot_2D_phase_diagram_interactive(res::Result; observable::String="nsol
 
     sc,ax,f,annot,lab = _get_interactive_plot_axes(x,y,gx,gy,pretty_ylabels,cut_dim,cut_type,nvars,nsolsmax_physical,sol_type,not_sol_type,string_f=string_f)
 
-    length(vec(ax)) <= nrows*ncols || error("insufficient # of panels requested, please increase nrows or ncols") #sanity check before any plot is made
+    if length(vec(ax)) > nrows*ncols 
+        print("insufficient # of panels requested. nrows/ncols input ignored") #sanity check before any plot is made
+        nrows=1; ncols = length(vec(ax))
+    end
    
     _,im,Nmax = plot_2D_phase_diagram(res; stable=stable,observable=observable,ax=ax[1]) #skip saved data dictionary
 
@@ -262,23 +265,23 @@ function plot_2D_phase_diagram_interactive(res::Result; observable::String="nsol
         
         if cut_type=="solutions" 
             for l in 1:nvars      
-                ax[l+1].plot(Z, _squeeze!(solution_cut_s[l,:,:]'),lw=3)
+                ax[l+1].plot(Z, _squeeze!(solution_cut_s[l,:,:]'))
                 if !stable
-                    ax[l+1].plot(Z, _squeeze!(solution_cut_u[l,:,:]'),ls="--",lw=3)
+                    ax[l+1].plot(Z, _squeeze!(solution_cut_u[l,:,:]'),ls="--")
                 end
             end    
         elseif cut_type=="jacobian_eigenvalues"
             for l in 1:nsolsmax
-                ax[l+1].axhline(0,ls=":",lw=4) #reference value for unstability test 
+                ax[l+1].axhline(0,ls=":",lw=3) #reference value for unstability test 
                 for sols in _squeeze!.([solution_cut_s[:,l,:]',solution_cut_u[:,l,:]'])
                     _plot_2D_solutions_jacobian_cut(res,sols,parameter_val,Z,ax[l+1])         
                 end
             end
         elseif cut_type=="transform"  
             for l in 1:length(string_f)
-                ax[l+1].plot(Z,_squeeze!(solution_cut_s[l]'),ls="-",lw=3)
+                ax[l+1].plot(Z,_squeeze!(solution_cut_s[l]'),ls="-")
                 if !stable
-                    ax[l+1].plot(Z,_squeeze!(solution_cut_u[l]'),ls="--",lw=3)
+                    ax[l+1].plot(Z,_squeeze!(solution_cut_u[l]'),ls="--")
                 end
             end
         end    
@@ -291,8 +294,12 @@ function plot_2D_phase_diagram_interactive(res::Result; observable::String="nsol
             end
         end
         
-        legend_elements = [plt.Line2D([1], [1], linestyle="-", color="k", label=lab[1], markerfacecolor="k", markersize=5),
-                           plt.Line2D([1], [1], linestyle="--", color="k", label=lab[2],markerfacecolor="k", markersize=5)]    
+        if !stable
+            legend_elements = [plt.Line2D([1], [1], linestyle="-", color="k", label=lab[1], markerfacecolor="k", markersize=3),
+                            plt.Line2D([1], [1], linestyle="--", color="k", label=lab[2],markerfacecolor="k", markersize=3)]    
+        else
+            legend_elements = [plt.Line2D([1], [1], linestyle="-", color="k", label=lab[1], markerfacecolor="k", markersize=3)]    
+        end
         ax[end].legend(handles=legend_elements,loc="best") 
     end    
 
@@ -304,8 +311,8 @@ function plot_2D_phase_diagram_interactive(res::Result; observable::String="nsol
 
     ax = resize_axes!(f,ax,nrows,ncols)
     if nrows>1
-        _prepare_colorbar(f,ax,im,Nmax)
+        _prepare_colorbar(f,ax,im,Nmax,"right")
     else
-        _prepare_colorbar(f,ax[end],im,Nmax)
+        _prepare_colorbar(f,ax,im,Nmax,"left")
     end
 end
