@@ -12,7 +12,7 @@ using LinearAlgebra
             timespan::Tuple
             )
 
-Creates an ODEProblem object used by DifferentialEquations.jl from the equations in `eom` to simulate time-evolution within `timespan`.
+Creates an `ODEProblem`` object used by `DifferentialEquations.jl` from the equations in `eom` to simulate time-evolution within `timespan`.
 To manually input parameter values and initial conditions, use the keywords `fixed_parameters` and `x0`.
 To start the evolution from a steady-state solution, use `steady_solution`. 
 Keyword arguments from `DifferentialEquations.jl` can be added through `kwargs`.
@@ -48,7 +48,7 @@ end
 
 
 # evolving from a steady-state solution found with homotopy continuation
-function ODEProblem(eom::HarmonicEquation; steady_solution::StateDict, sweep=ParameterSweep(), timespan, perturb_initial=0; kwargs...)
+function ODEProblem(eom::HarmonicEquation; steady_solution::StateDict, sweep=ParameterSweep(), timespan, perturb_initial=0, kwargs...)
     vars = [HarmonicBalance.declare_variable(v) for v in (HarmonicBalance.var_name.(get_variables(eom)))]
     initial = real.([steady_solution[v] for v in vars]) * (1-perturb_initial)
     ODEProblem(eom, steady_solution, sweep=sweep, x0=initial, timespan=timespan, kwargs...)
