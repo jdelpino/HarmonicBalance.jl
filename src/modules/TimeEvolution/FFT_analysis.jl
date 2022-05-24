@@ -51,7 +51,7 @@ function FFT_analyze(fft_u::Vector{ComplexF64}, fft_f; rect::Bool=true)
         end
         return 2*pi*(fft_f[max_indices]-df),  A1.*2, angle.(fft_u)[max_indices]+pi*df/δf
     else
-        peak_idx, values = Peaks.findmaxima(abs.(F).^2);
+        peak_idx, values = Peaks.findmaxima(abs.(fft_u).^2);
         return 2*pi*fft_f[peak_idx], values, angle.(fft_u)[peak_idx]
     end
 end
