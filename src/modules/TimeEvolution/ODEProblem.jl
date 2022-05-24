@@ -18,7 +18,7 @@ To start the evolution from a steady-state solution, use `steady_solution`.
 Keyword arguments from `DifferentialEquations.jl` can be added through `kwargs`.
 
 """
-function ODEProblem(eom::HarmonicEquation, fixed_parameters; sweep::ParameterSweep=ParameterSweep(), x0::Vector, timespan::Tuple; kwargs...)
+function ODEProblem(eom::HarmonicEquation, fixed_parameters; sweep::ParameterSweep=ParameterSweep(), x0::Vector, timespan::Tuple, kwargs...)
 
     if !is_rearranged(eom) # check if time-derivatives of the variable are on the right hand side
         eom = HarmonicBalance.rearrange_standard(eom)
@@ -51,7 +51,7 @@ end
 function ODEProblem(eom::HarmonicEquation; steady_solution::StateDict, sweep=ParameterSweep(), timespan, perturb_initial=0; kwargs...)
     vars = [HarmonicBalance.declare_variable(v) for v in (HarmonicBalance.var_name.(get_variables(eom)))]
     initial = real.([steady_solution[v] for v in vars]) * (1-perturb_initial)
-    ODEProblem(eom, steady_solution, sweep=sweep, x0=initial, timespan=timespan; kwargs...)
+    ODEProblem(eom, steady_solution, sweep=sweep, x0=initial, timespan=timespan, kwargs...)
 end
 
 
