@@ -14,10 +14,11 @@ using LinearAlgebra
 
 Creates an ODEProblem object used by DifferentialEquations.jl from the equations in `eom` to simulate time-evolution within `timespan`.
 To manually input parameter values and initial conditions, use the keywords `fixed_parameters` and `x0`.
-To start the evolution from a steady-state solution, use `steady_solution`.
+To start the evolution from a steady-state solution, use `steady_solution`. 
+Keyword arguments from `DifferentialEquations.jl` can be added through `kwargs`.
 
 """
-function ODEProblem(eom::HarmonicEquation, fixed_parameters; sweep::ParameterSweep=ParameterSweep(), x0::Vector, timespan::Tuple)
+function ODEProblem(eom::HarmonicEquation, fixed_parameters; sweep::ParameterSweep=ParameterSweep(), x0::Vector, timespan::Tuple; kwargs...)
 
     if !is_rearranged(eom) # check if time-derivatives of the variable are on the right hand side
         eom = HarmonicBalance.rearrange_standard(eom)
@@ -42,18 +43,15 @@ function ODEProblem(eom::HarmonicEquation, fixed_parameters; sweep::ParameterSwe
         end
     end
 
-    return DifferentialEquations.ODEProblem(f!,x0,timespan)
+    return DifferentialEquations.ODEProblem(f!,x0,timespan; kwargs...)
 end
 
 
-#ODEProblem(eom::HarmonicEquation, fixed; kwargs...) = ODEProblem(eom, ParameterList(fixed); kwargs...)
-
-
 # evolving from a steady-state solution found with homotopy continuation
-function ODEProblem(eom::HarmonicEquation; steady_solution::StateDict, sweep=ParameterSweep(), timespan, perturb_initial=0)
+function ODEProblem(eom::HarmonicEquation; steady_solution::StateDict, sweep=ParameterSweep(), timespan, perturb_initial=0; kwargs...)
     vars = [HarmonicBalance.declare_variable(v) for v in (HarmonicBalance.var_name.(get_variables(eom)))]
     initial = real.([steady_solution[v] for v in vars]) * (1-perturb_initial)
-    ODEProblem(eom, steady_solution, sweep=sweep, x0=initial, timespan=timespan)
+    ODEProblem(eom, steady_solution, sweep=sweep, x0=initial, timespan=timespan; kwargs...)
 end
 
 
@@ -66,7 +64,7 @@ The initial condition is displaced by `perturb_initial`.
 Return `true` the solution evolves within `tol` of the initial value (interpreted as stable).
 
 """
-function is_stable(soln::StateDict, eom::HarmonicEquation; timespan, tol=1E-1, perturb_initial=1E-3)
+function is_stable(soln::StateDict, eom::HarmonicEquation; timespan, tol=1E-1)
     problem = ODEProblem(eom, steady_solution=soln, timespan=timespan)
     solution = solve(problem)
     dist = norm(solution[end] - solution[1]) / (norm(solution[end]) + norm(solution[1]))

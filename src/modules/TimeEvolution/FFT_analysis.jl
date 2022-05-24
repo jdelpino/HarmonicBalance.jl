@@ -1,9 +1,15 @@
-export FFT, u_of_t, uv_nonrotating_frame
+export FFT, FFT_analyze, u_of_t, harmonic_variables_t_lab_frame
 
-"""Fourier transform the timeseries of a simulation in the rotating frame and calculate the quadratures and freqeuncies in the non-rotating frame."""
-function FFT(soln_u, soln_t; window = DSP.Windows.hanning)
-    "Input: solution object of DifferentialEquation (positions array and corresponding time)
-    Output: Fourier transform and frequencies, where window function window was used"
+"""
+$(TYPEDSIGNATURES)
+
+Windowed Fourier transform the timeseries of a `DifferentialEquations.jl` simulation `soln_u` in the rotating frame, with time vector `soln_t` and calculate the quadratures `u,v` and frequencies in the non-rotating frame.
+
+Keyword arguments:
+-`window`: windowing function. By default, `window = DSP.Windows.hanning`. See `https://docs.juliadsp.org/stable/windows/` for further options
+"""
+
+function FFT(soln_u::Vector{Float64}, soln_t::Vector{Float64}; window = DSP.Windows.hanning)
     w = window(length(soln_t))
     dt = soln_t[2]-soln_t[1]
     
@@ -12,50 +18,64 @@ function FFT(soln_u, soln_t; window = DSP.Windows.hanning)
     fft_u =length(soln_t)/sum(w)*[fft(w.*[u[j] for (u,t) in soln_tuples])|> fftshift for j in 1:length(soln_u[1])];
     fft_f = fftfreq(length(soln_t), 1/dt) |> fftshift
 
-    # normalize fft_u
-    return(fft_u / length(fft_f), 2*pi*fft_f)
+    return(fft_u[1] / length(fft_f), fft_f)  # normalize fft_u
 end
 
 FFT(soln::OrdinaryDiffEq.ODECompositeSolution; window=DSP.Windows.hanning) = FFT(soln.u, soln.t, window=window)
 
 
-function FFT_analyze(fft_u::Vector{ComplexF64}, fft_f)
-    "finds peaks in the spectrum and returns corresponding frequency, amplitude and phase. 
-    Frequency and phase are corrected according to Huang Dishan, Mechanical Systems and Signal Processing (1995) 9(2), 113–118
-    This correction works for a rectangular window."
+"""
+$(TYPEDSIGNATURES)
 
+Finds peaks in the spectrum and returns corresponding frequency, amplitude and phase.
+
+Keyword arguments:
+-`rect`: If `true`, a rectangular window function is assumed. Frequency and phase are therefore corrected according to Huang Dishan, Mechanical Systems and Signal Processing (1995) 9(2), 113–118. 
+Else, frequencies and values of spectral peaks are returned with no correction.
+"""
+function FFT_analyze(fft_u::Vector{ComplexF64}, fft_f; rect::Bool=true)
     # retaining more sigdigits gives more ''spurious'' peaks
-    max_indices, mxval = peakprom(round.( abs.(fft_u), sigdigits=3),minprom =1)
-    Del = fft_f[2]-fft_f[1] # frequency spacing
-    A1= abs.(fft_u)[max_indices] 
-    df = zeros(length(max_indices))
-    for i in 1:length(max_indices)
-        if abs.(fft_u)[max_indices[i]-1]<abs.(fft_u)[max_indices[i]+1]
-            A2= abs.(fft_u)[max_indices[i]+1]
-            df[i] = -Del /(A1[i]/A2+1)
-        else
-            A2= abs.(fft_u)[max_indices[i]-1]
-            df[i] = Del /(A1[i]/A2+1)
+    if rect == true
+        max_indices, mxval = peakprom(round.( abs.(fft_u), sigdigits=3),minprom =1)
+        δf = fft_f[2]-fft_f[1] # frequency spacing
+        A1= abs.(fft_u)[max_indices] 
+        df = zeros(length(max_indices))
+        for i in 1:length(max_indices)
+            if abs.(fft_u)[max_indices[i]-1]<abs.(fft_u)[max_indices[i]+1]
+                A2= abs.(fft_u)[max_indices[i]+1]
+                df[i] = -δf /(A1[i]/A2+1)
+            else
+                A2= abs.(fft_u)[max_indices[i]-1]
+                df[i] = δf /(A1[i]/A2+1)
+            end
         end
+        return 2*pi*(fft_f[max_indices]-df),  A1.*2, angle.(fft_u)[max_indices]+pi*df/δf
+    else
+        peak_idx, values = Peaks.findmaxima(abs.(F).^2);
+        return 2*pi*fft_f[peak_idx], values, angle.(fft_u)[peak_idx]
     end
-    return 2*pi*(fft_f[max_indices]-df),  A1.*2, angle.(fft_u)[max_indices]+pi*df/Del
 end
 
-function u_of_t(omegas_peak,As_peak,phis_peak,t)
-    "Calculate us or vs as a function of time from the Fourier components."
-    N = length(omegas_peak)
-    u = zeros(length(t))
+"""
+$(TYPEDSIGNATURES)
+Reconstruct the time dependence of `u` or `v` in the rotating frame from a Fourier decomposition in the rotating frame
+"""
+function harmonic_variables_t_rotating_frame(ω_peaks,A_peaks,ϕ_peaks,times)
+    N = length(ω_peaks)
+    u = zeros(length(times))
     for m in Int(N/2 - mod(N/2,1))+1:N
-        u .+= As_peak[m]*cos.(omegas_peak[m].*t.+phis_peak[m]);
+        u .+= A_peaks[m]*cos.(ω_peaks[m].*times.+ϕ_peaks[m]);
     end
     return u
 end
 
-function uv_nonrotating_frame(omega_rot,omega_peak,A_u_peak,phi_u_peak,A_v_peak,phi_v_peak)
-    "calculates amplitudes and frequencies of the position in the nonrotating frame from the 
-    amplitudes and frequencies in the rotating frame."
-    omega_nr = [omega_rot-omega_peak, omega_rot+omega_peak]
-    u_nr = [-A_u_peak*cos(phi_u_peak) + A_v_peak*sin(phi_v_peak); -A_u_peak*cos(phi_u_peak) - A_v_peak*sin(phi_v_peak)]./2
-    v_nr = [A_v_peak*cos(phi_v_peak) + A_u_peak*sin(phi_u_peak) ; A_v_peak*cos(phi_v_peak) - A_u_peak*sin(phi_u_peak)]./2
-    return omega_nr, u_nr, v_nr
+"""
+$(TYPEDSIGNATURES)
+Reconstruct the time dependence of `u` or `v` in the lab frame from a Fourier decomposition in the rotating frame
+"""
+function harmonic_variables_t_lab_frame(ω_rot,ω_peak,A_u_peak,ϕ_u_peak,A_v_peak,ϕ_v_peak)
+    ω_nr = [ω_rot-ω_peak, ω_rot+ω_peak]
+    u_nr = [-A_u_peak*cos(ϕ_u_peak) + A_v_peak*sin(ϕ_v_peak); -A_u_peak*cos(ϕ_u_peak) - A_v_peak*sin(ϕ_v_peak)]./2
+    v_nr = [ A_v_peak*cos(ϕ_v_peak) + A_u_peak*sin(ϕ_u_peak);  A_v_peak*cos(ϕ_v_peak) - A_u_peak*sin(ϕ_u_peak)]./2
+    return ω_nr, u_nr, v_nr
 end
